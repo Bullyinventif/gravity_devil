@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Gravity Switch</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            font-family: 'Arial', sans-serif;
+            height: 100vh;
+            width: 100vw;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #eee, transparent),
+                radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.5), transparent),
+                radial-gradient(1px 1px at 90px 40px, #fff, transparent);
+            background-repeat: repeat;
+            background-size: 200px 100px;
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        #gameContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 100px;
+            border: 3px solid #3498db;
+            border-radius: 0;
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: rgba(26, 26, 46, 0.8);
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        
+        #title {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5em;
+            font-weight: bold;
+            text-shadow: 0 0 15px rgba(52, 152, 219, 0.8);
+            color: #3498db;
+            z-index: 10;
+        }
+        
+        #levelInfo {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 1.2em;
+            color: #e74c3c;
+            z-index: 10;
+            text-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        
+        #winMessage {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #2ecc71;
+            text-shadow: 0 0 25px rgba(46, 204, 113, 0.8);
+            display: none;
+            text-align: center;
+            z-index: 20;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        
+        #controlsInfo {
+            position: absolute;
+            bottom: 105px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            font-size: 0.9em;
+            color: #aaa;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 8px 15px;
+            border-radius: 5px;
+            z-index: 10;
+        }
+        
+        #mobileControls {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            height: 90px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px;
+            z-index: 10;
+        }
+        
+        .control-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 3px solid rgba(255,255,255,0.8);
+            background: linear-gradient(145deg, rgba(255,255,255,0.2), rgba(255,255,255,0.1));
+            color: white;
+            font-size: 2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            backdrop-filter: blur(5px);
+            transition: all 0.1s ease;
+        }
+        
+        .control-btn:active {
+            background: linear-gradient(145deg, rgba(255,255,255,0.4), rgba(255,255,255,0.2));
+            transform: scale(0.95);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        #leftBtn {
+            background: linear-gradient(145deg, rgba(52, 152, 219, 0.3), rgba(52, 152, 219, 0.2));
+            border-color: #3498db;
+        }
+        
+        #rightBtn {
+            background: linear-gradient(145deg, rgba(52, 152, 219, 0.3), rgba(52, 152, 219, 0.2));
+            border-color: #3498db;
+        }
+        
+        #gravityBtn {
+            width: 80px;
+            height: 80px;
+            font-size: 2.5em;
+            background: linear-gradient(145deg, rgba(231, 76, 60, 0.4), rgba(231, 76, 60, 0.2));
+            border-color: #e74c3c;
+            box-shadow: 0 0 20px rgba(231, 76, 60, 0.5);
+        }
+        
+        #gravityBtn:active {
+            background: linear-gradient(145deg, rgba(231, 76, 60, 0.6), rgba(231, 76, 60, 0.4));
+            transform: scale(0.9);
+        }
+        
+        #restartBtn, #nextLevelBtn {
+            position: absolute;
+            padding: 12px 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            display: none;
+            z-index: 20;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        
+        #restartBtn {
+            top: 55%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(145deg, #3498db, #2980b9);
+        }
+        
+        #nextLevelBtn {
+            top: 65%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(145deg, #2ecc71, #27ae60);
+        }
+        
+        #nextLevelBtn:active, #restartBtn:active {
+            transform: translateX(-50%) scale(0.95);
+        }
+        
+        @media (min-width: 768px) {
+            #mobileControls {
+                display: none !important;
+            }
+            #controlsInfo {
+                bottom: 20px;
+                font-size: 1.1em;
+            }
+            #gameContainer {
+                bottom: 0 !important;
+                height: 100% !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <h1 id="title">Gravity Switch</h1>
+        <div id="levelInfo">Niveau: <span id="levelNumber">1</span></div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+    <div id="controlsInfo">PC: ← → Bouger | ESPACE: Inverser gravité | Mobile: Boutons tactiles</div>
+    <div id="winMessage">Niveau Réussi ! 🎉</div>
+    <button id="restartBtn">Recommencer</button>
+    <button id="nextLevelBtn">Niveau Suivant</button>
+    
+    <div id="mobileControls">
+        <button id="leftBtn" class="control-btn">←</button>
+        <button id="gravityBtn" class="control-btn">⇄</button>
+        <button id="rightBtn" class="control-btn">→</button>
+    </div>
+
+    <script>
+        // ========== CONFIG ==========
+        const gameContainer = document.getElementById('gameContainer');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const title = document.getElementById('levelNumber');
+        const winMessage = document.getElementById('winMessage');
+        const restartBtn = document.getElementById('restartBtn');
+        const nextLevelBtn = document.getElementById('nextLevelBtn');
+        const leftBtn = document.getElementById('leftBtn');
+        const rightBtn = document.getElementById('rightBtn');
+        const gravityBtn = document.getElementById('gravityBtn');
+        const controlsInfo = document.getElementById('controlsInfo');
+
+        // Detect if on mobile
+        const isMobile = window.innerWidth < 768 || ('ontouchstart' in window);
+        
+        // Set canvas size
+        function resizeCanvas() {
+            if (isMobile) {
+                const controlsHeight = 100;
+                gameContainer.style.bottom = controlsHeight + 'px';
+                gameContainer.style.height = (window.innerHeight - controlsHeight) + 'px';
+            } else {
+                gameContainer.style.bottom = '0';
+                gameContainer.style.height = '100%';
+            }
+            canvas.width = window.innerWidth;
+            canvas.height = isMobile ? window.innerHeight - 100 : window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            if (!gameWon) {
+                setTimeout(() => initLevel(currentLevel), 100);
+            }
+        });
+
+        // Game state
+        let currentLevel = 0;
+        let gameWon = false;
+        let isGravityInverted = false;
+
+        // Player
+        const player = {
+            x: 100,
+            y: 100,
+            width: 35,
+            height: 35,
+            speed: 7,
+            velocityX: 0,
+            velocityY: 0,
+            color: '#3498db',
+            get bottom() { return this.y + this.height; },
+            get top() { return this.y; },
+            get left() { return this.x; },
+            get right() { return this.x + this.width; }
+        };
+
+        // Gravity
+        const gravityStrength = 0.6;
+        let gravity = gravityStrength;
+
+        // Platforms and exit for each level
+        const levels = [
+            // Level 1: Basic
+            {
+                platforms: [
+                    { x: 0, y: 0, width: '100%', height: 20 },
+                    { x: 0, y: 0, width: 20, height: '100%' },
+                    { x: '100%-20', y: 0, width: 20, height: '100%' },
+                    { x: 0, y: '100%-20', width: '100%', height: 20 },
+                    { x: '30%', y: '70%', width: '20%', height: 15 },
+                    { x: '50%', y: '55%', width: '20%', height: 15 }
+                ],
+                exit: { x: '80%', y: '15%', width: 40, height: 40 }
+            },
+            // Level 2: More complex
+            {
+                platforms: [
+                    { x: 0, y: 0, width: '100%', height: 20 },
+                    { x: 0, y: 0, width: 20, height: '100%' },
+                    { x: '100%-20', y: 0, width: 20, height: '100%' },
+                    { x: 0, y: '100%-20', width: '100%', height: 20 },
+                    { x: '20%', y: '80%', width: '12%', height: 15 },
+                    { x: '40%', y: '65%', width: '12%', height: 15 },
+                    { x: '60%', y: '50%', width: '12%', height: 15 },
+                    { x: '40%', y: '75%', width: '25%', height: 15 }
+                ],
+                exit: { x: '80%', y: '10%', width: 40, height: 40 }
+            },
+            // Level 3: Maze
+            {
+                platforms: [
+                    { x: 0, y: 0, width: '100%', height: 20 },
+                    { x: 0, y: 0, width: 20, height: '100%' },
+                    { x: '100%-20', y: 0, width: 20, height: '100%' },
+                    { x: 0, y: '100%-20', width: '100%', height: 20 },
+                    { x: '25%', y: '25%', width: '50%', height: 15 },
+                    { x: '25%', y: '50%', width: '50%', height: 15 },
+                    { x: '25%', y: '75%', width: '50%', height: 15 },
+                    { x: '35%', y: '25%', width: 15, height: '20%' },
+                    { x: '50%', y: '50%', width: 15, height: '20%' },
+                    { x: '65%', y: '25%', width: 15, height: '20%' }
+                ],
+                exit: { x: '80%', y: '45%', width: 40, height: 40 }
+            }
+        ];
+
+        let platforms = [];
+        let exit = {};
+
+        // Keys state
+        const keys = {
+            left: false,
+            right: false,
+            space: false
+        };
+
+        // ========== HELPER FUNCTIONS ==========
+        function parseValue(value, total, isWidth = true) {
+            if (typeof value === 'string') {
+                if (value.includes('%')) {
+                    const percent = parseFloat(value) / 100;
+                    return isWidth ? percent * total : percent * total;
+                }
+                if (value.includes('-')) {
+                    const parts = value.split('-');
+                    const base = parseFloat(parts[0]);
+                    const subtract = parseFloat(parts[1]);
+                    return (isWidth ? total : total) - subtract;
+                }
+            }
+            return value;
+        }
+
+        function checkCollision(obj1, obj2) {
+            return (
+                obj1.right > obj2.x &&
+                obj1.left < obj2.x + obj2.width &&
+                obj1.bottom > obj2.y &&
+                obj1.top < obj2.y + obj2.height
+            );
+        }
+
+        // Check if player can move to newX position
+        function canMoveToX(newX) {
+            const testPlayer = {
+                x: newX,
+                y: player.y,
+                width: player.width,
+                height: player.height,
+                get left() { return this.x; },
+                get right() { return this.x + this.width; },
+                get top() { return this.y; },
+                get bottom() { return this.y + this.height; }
+            };
+            
+            // Check boundaries
+            if (newX < 0 || newX + player.width > canvas.width) {
+                return false;
+            }
+            
+            // Check platforms
+            for (const platform of platforms) {
+                if (checkCollision(testPlayer, platform)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Check if player can move to newY position
+        function canMoveToY(newY) {
+            const testPlayer = {
+                x: player.x,
+                y: newY,
+                width: player.width,
+                height: player.height,
+                get left() { return this.x; },
+                get right() { return this.x + this.width; },
+                get top() { return this.y; },
+                get bottom() { return this.y + this.height; }
+            };
+            
+            // Check boundaries
+            if (newY < 0 || newY + player.height > canvas.height) {
+                return false;
+            }
+            
+            // Check platforms
+            for (const platform of platforms) {
+                if (checkCollision(testPlayer, platform)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // ========== INIT GAME ==========
+        function initLevel(levelIndex) {
+            currentLevel = levelIndex;
+            title.textContent = levelIndex + 1;
+            
+            // Reset player
+            player.x = canvas.width * 0.15;
+            player.y = canvas.height * 0.3;
+            player.velocityX = 0;
+            player.velocityY = 0;
+            player.color = '#3498db';
+            isGravityInverted = false;
+            gravity = gravityStrength;
+            gameWon = false;
+
+            // Load level
+            const levelData = levels[levelIndex];
+            platforms = levelData.platforms.map(p => {
+                const width = typeof p.width === 'string' ? parseValue(p.width, canvas.width, true) : p.width;
+                const height = typeof p.height === 'string' ? parseValue(p.height, canvas.height, false) : p.height;
+                const x = typeof p.x === 'string' ? parseValue(p.x, canvas.width, true) : p.x;
+                const y = typeof p.y === 'string' ? parseValue(p.y, canvas.height, false) : p.y;
+                return { x, y, width, height };
+            });
+            
+            exit = {
+                x: typeof levelData.exit.x === 'string' ? parseValue(levelData.exit.x, canvas.width, true) : levelData.exit.x,
+                y: typeof levelData.exit.y === 'string' ? parseValue(levelData.exit.y, canvas.height, false) : levelData.exit.y,
+                width: typeof levelData.exit.width === 'string' ? parseValue(levelData.exit.width, canvas.width, true) : levelData.exit.width,
+                height: typeof levelData.exit.height === 'string' ? parseValue(levelData.exit.height, canvas.height, false) : levelData.exit.height
+            };
+
+            // Hide win message
+            winMessage.style.display = 'none';
+            restartBtn.style.display = 'none';
+            nextLevelBtn.style.display = 'none';
+        }
+
+        // ========== UPDATE GAME ==========
+        function update() {
+            if (gameWon) return;
+
+            // Apply gravity
+            player.velocityY += gravity;
+
+            // Apply horizontal movement with acceleration/deceleration
+            if (keys.left) {
+                player.velocityX = Math.max(player.velocityX - 0.8, -player.speed);
+            } else if (keys.right) {
+                player.velocityX = Math.min(player.velocityX + 0.8, player.speed);
+            } else {
+                // Friction
+                if (player.velocityX > 0.1) {
+                    player.velocityX -= 0.5;
+                } else if (player.velocityX < -0.1) {
+                    player.velocityX += 0.5;
+                } else {
+                    player.velocityX = 0;
+                }
+            }
+
+            // Try to move horizontally
+            const newX = player.x + player.velocityX;
+            if (canMoveToX(newX)) {
+                player.x = newX;
+            } else {
+                // Try to move just a little bit to find where collision starts
+                if (player.velocityX > 0) {
+                    let testX = player.x;
+                    while (testX < newX && canMoveToX(testX + 1)) {
+                        testX += 1;
+                    }
+                    player.x = testX;
+                } else if (player.velocityX < 0) {
+                    let testX = player.x;
+                    while (testX > newX && canMoveToX(testX - 1)) {
+                        testX -= 1;
+                    }
+                    player.x = testX;
+                }
+                player.velocityX = 0;
+            }
+
+            // Try to move vertically
+            const newY = player.y + player.velocityY;
+            if (canMoveToY(newY)) {
+                player.y = newY;
+            } else {
+                // Try to move just a little bit to find where collision starts
+                if (player.velocityY > 0) {
+                    let testY = player.y;
+                    while (testY < newY && canMoveToY(testY + 1)) {
+                        testY += 1;
+                    }
+                    player.y = testY;
+                } else if (player.velocityY < 0) {
+                    let testY = player.y;
+                    while (testY > newY && canMoveToY(testY - 1)) {
+                        testY -= 1;
+                    }
+                    player.y = testY;
+                }
+                player.velocityY = 0;
+            }
+
+            // Check for space press (gravity switch)
+            if (keys.space) {
+                isGravityInverted = !isGravityInverted;
+                gravity = isGravityInverted ? -gravityStrength : gravityStrength;
+                player.color = isGravityInverted ? '#e74c3c' : '#3498db';
+                keys.space = false;
+            }
+
+            // Check exit collision
+            if (checkCollision(player, exit) && !gameWon) {
+                gameWon = true;
+                winMessage.style.display = 'block';
+                restartBtn.style.display = 'block';
+                if (currentLevel < levels.length - 1) {
+                    nextLevelBtn.style.display = 'block';
+                }
+            }
+        }
+
+        // ========== DRAW GAME ==========
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw platforms
+            for (const platform of platforms) {
+                const isFloor = platform.y > canvas.height - 30 && platform.width > canvas.width * 0.9;
+                const isCeiling = platform.y < 10 && platform.width > canvas.width * 0.9;
+                const isWall = platform.width < 30 && platform.height > canvas.height * 0.8;
+                
+                if (isFloor) {
+                    ctx.fillStyle = '#5a3d2b';
+                    ctx.strokeStyle = '#7a523b';
+                    ctx.lineWidth = 3;
+                } else if (isCeiling) {
+                    ctx.fillStyle = '#3a2110';
+                    ctx.strokeStyle = '#5a3d2b';
+                    ctx.lineWidth = 2;
+                } else if (isWall) {
+                    ctx.fillStyle = '#4a3728';
+                    ctx.strokeStyle = '#6a4728';
+                    ctx.lineWidth = 2;
+                } else {
+                    ctx.fillStyle = '#444';
+                    ctx.strokeStyle = '#555';
+                    ctx.lineWidth = 2;
+                }
+                
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+            }
+
+            // Draw exit
+            const exitGradient = ctx.createRadialGradient(
+                exit.x + exit.width/2, exit.y + exit.height/2, exit.width/4,
+                exit.x + exit.width/2, exit.y + exit.height/2, exit.width
+            );
+            exitGradient.addColorStop(0, '#2ecc71');
+            exitGradient.addColorStop(1, '#27ae60');
+            ctx.fillStyle = exitGradient;
+            
+            ctx.beginPath();
+            ctx.roundRect = function(x, y, width, height, radius) {
+                ctx.beginPath();
+                ctx.moveTo(x + radius, y);
+                ctx.lineTo(x + width - radius, y);
+                ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+                ctx.lineTo(x + width, y + height - radius);
+                ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                ctx.lineTo(x + radius, y + height);
+                ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+                ctx.lineTo(x, y + radius);
+                ctx.quadraticCurveTo(x, y, x + radius, y);
+                ctx.closePath();
+            };
+            ctx.roundRect(exit.x, exit.y, exit.width, exit.height, 10);
+            ctx.fill();
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = `${exit.width * 0.6}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🚪', exit.x + exit.width / 2, exit.y + exit.height / 2);
+
+            // Draw player
+            const playerGradient = ctx.createRadialGradient(
+                player.x + player.width/2, player.y + player.height/2, player.width/4,
+                player.x + player.width/2, player.y + player.height/2, player.width/2
+            );
+            playerGradient.addColorStop(0, player.color);
+            playerGradient.addColorStop(1, isGravityInverted ? '#c0392b' : '#2980b9');
+            
+            ctx.fillStyle = playerGradient;
+            ctx.beginPath();
+            ctx.arc(
+                player.x + player.width / 2,
+                player.y + player.height / 2,
+                player.width / 2,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+
+            // Outer glow
+            ctx.shadowColor = player.color;
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.arc(
+                player.x + player.width / 2,
+                player.y + player.height / 2,
+                player.width / 2,
+                0,
+                Math.PI * 2
+            );
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Draw eyes
+            ctx.fillStyle = '#fff';
+            const eyeSize = player.width * 0.25;
+            const eyeOffsetX = player.width * 0.2;
+            const eyeOffsetY = player.height * 0.15;
+            
+            ctx.beginPath();
+            ctx.arc(
+                player.x + player.width / 2 - eyeOffsetX,
+                player.y + player.height / 2 - eyeOffsetY,
+                eyeSize / 2, 0, Math.PI * 2
+            );
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(
+                player.x + player.width / 2 + eyeOffsetX,
+                player.y + player.height / 2 - eyeOffsetY,
+                eyeSize / 2, 0, Math.PI * 2
+            );
+            ctx.fill();
+
+            // Draw mouth
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = player.width * 0.1;
+            ctx.beginPath();
+            ctx.arc(
+                player.x + player.width / 2,
+                player.y + player.height / 2 + eyeOffsetY,
+                player.width * 0.25,
+                0, Math.PI
+            );
+            ctx.stroke();
+        }
+
+        // ========== GAME LOOP ==========
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ========== TOUCH CONTROLS ==========
+        leftBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            keys.left = true;
+        });
+        leftBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            keys.left = false;
+        });
+
+        rightBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            keys.right = true;
+        });
+        rightBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            keys.right = false;
+        });
+
+        gravityBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            keys.space = true;
+        });
+        gravityBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+        });
+
+        // Prevent default touch behavior
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        // ========== KEYBOARD CONTROLS (PC) ==========
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'ArrowLeft') keys.left = true;
+            if (e.code === 'ArrowRight') keys.right = true;
+            if (e.code === 'Space') {
+                e.preventDefault(); // Prevent page scroll on space
+                keys.space = true;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowLeft') keys.left = false;
+            if (e.code === 'ArrowRight') keys.right = false;
+            if (e.code === 'Space') keys.space = false;
+        });
+
+        // ========== BUTTON CONTROLS (PC) ==========
+        restartBtn.addEventListener('click', () => initLevel(currentLevel));
+        restartBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            initLevel(currentLevel);
+        });
+
+        nextLevelBtn.addEventListener('click', () => {
+            if (currentLevel < levels.length - 1) initLevel(currentLevel + 1);
+        });
+        nextLevelBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (currentLevel < levels.length - 1) initLevel(currentLevel + 1);
+        });
+
+        // ========== START GAME ==========
+        initLevel(0);
+        gameLoop();
+    </script>
+</body>
+</html>
